@@ -20,3 +20,6 @@ airflow.db
 airflow.cfg
 unittests.cfg
 webserver_config.py
+scaler.pkl
+xai_report.json
+!/data/xai_report.json
