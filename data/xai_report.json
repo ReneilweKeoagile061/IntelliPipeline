@@ -1,0 +1,39 @@
+{
+  "feature_importance": {
+    "transaction_amount": 0.035134320739688404,
+    "tx_count_7d": 0.3263002813823993,
+    "avg_amount_30d": 0.03054962019869247,
+    "amount_deviation_ratio": 0.036548341300698756,
+    "hour_of_day": 0.026764286696156814,
+    "is_weekend": 0.004687419645559603,
+    "is_new_merchant": 0.0007473917227060031,
+    "is_cross_border": 0.0030627068490616154,
+    "rule_based_risk": 0.0374303592687448
+  },
+  "top_features": [
+    [
+      "tx_count_7d",
+      0.3263002813823993
+    ],
+    [
+      "rule_based_risk",
+      0.0374303592687448
+    ],
+    [
+      "amount_deviation_ratio",
+      0.036548341300698756
+    ],
+    [
+      "transaction_amount",
+      0.035134320739688404
+    ],
+    [
+      "avg_amount_30d",
+      0.03054962019869247
+    ]
+  ],
+  "explanation_stability": 0.9746367713637542,
+  "interpretable_for_pct": 0.948,
+  "methodology": "SHAP TreeExplainer",
+  "run_id": "0c045e7ae71f43ca9dd7903d8df54e33"
+}

@@ -1,0 +1,30 @@
+{
+  "version": "v1.0",
+  "description": "IntelliPipeline fraud detection feature schema",
+  "required_columns": [
+    "customer_id",
+    "transaction_id",
+    "transaction_timestamp",
+    "transaction_amount",
+    "merchant_category",
+    "merchant_country",
+    "customer_country",
+    "device_fingerprint",
+    "tx_count_7d",
+    "avg_amount_30d",
+    "amount_deviation_ratio",
+    "hour_of_day",
+    "is_weekend",
+    "is_new_merchant",
+    "is_cross_border",
+    "rule_based_risk",
+    "is_fraud",
+    "feature_version",
+    "feature_timestamp"
+  ],
+  "constraints": {
+    "transaction_amount": {"min": 0.01, "max": 1000000},
+    "rule_based_risk": {"min": 0.0, "max": 1.0},
+    "is_fraud_rate": {"min": 0.005, "max": 0.05}
+  }
+}

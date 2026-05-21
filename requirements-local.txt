@@ -1,0 +1,20 @@
+# IntelliPipeline Lite — local-only dependencies (Python 3.11 recommended)
+# pip install -r requirements-local.txt
+
+pandas>=2.0.0
+numpy>=1.26.0
+scikit-learn>=1.4.0
+mlflow>=2.9.0
+shap>=0.44.0
+scipy>=1.12.0
+joblib>=1.3.0
+flask>=3.0.0
+flask-cors>=4.0.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# Optional: Airflow local orchestration (Week 3)
+# apache-airflow==2.9.0
+
+# Optional: Claude NL queries (Week 5)
+# anthropic>=0.25.0

@@ -1,0 +1,30 @@
+# IntelliPipeline Lite — API + Dashboard only (no Airflow/Azure)
+# Usage: docker compose -f docker-compose.local.yml up --build
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "5000:5000"
+    environment:
+      - INTELLIPIPELINE_LOCAL=1
+      - FEATURE_STORE_PATH=/app/data/fraud_features.csv
+      - MLFLOW_TRACKING_URI=file:/app/mlruns
+    volumes:
+      - ./data:/app/data
+      - ./mlruns:/app/mlruns
+
+  dashboard:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./dashboard:/app
+    environment:
+      - VITE_API_BASE_URL=http://localhost:5000/api
+    depends_on:
+      - api

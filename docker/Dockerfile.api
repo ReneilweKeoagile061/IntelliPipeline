@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY api/requirements.txt /app/api/requirements.txt
+RUN pip install --no-cache-dir -r /app/api/requirements.txt \
+    scikit-learn pandas numpy pyarrow shap mlflow python-dotenv
+
+COPY api/ /app/api/
+COPY data/ /app/data/
+COPY ml_training/ /app/ml_training/
+
+ENV PYTHONPATH=/app/api
+WORKDIR /app/api
+
+EXPOSE 5000
+CMD ["python", "app.py"]
