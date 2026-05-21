@@ -12,7 +12,7 @@ DATA_DIR = ROOT / "data"
 DATA_DIR.mkdir(exist_ok=True)
 
 np.random.seed(42)
-N = 10_000
+N = int(os.environ.get("INTELLIPIPELINE_N_RECORDS", "10000"))
 
 n_fraud = int(N * 0.03)
 is_fraud = np.zeros(N, dtype=int)

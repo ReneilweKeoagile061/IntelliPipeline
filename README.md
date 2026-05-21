@@ -21,7 +21,8 @@ We follow **Path B: IntelliPipeline Lite** — end-to-end on your machine in ~4 
 | 5 | Flask + React UI | `api/app.py` + `dashboard` |
 | 6+ | Azure port (optional) | See `.env.example` |
 
-**Full guide:** [docs/LOCAL_BUILD.md](docs/LOCAL_BUILD.md)
+**Full guide:** [docs/LOCAL_BUILD.md](docs/LOCAL_BUILD.md)  
+**Databricks:** [docs/DATABRICKS.md](docs/DATABRICKS.md) · Week 1 notebook: `notebooks/databricks/IntelliPipeline_Week1_E2E.py`
 
 ### Quick start (5 minutes)
 
