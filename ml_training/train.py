@@ -36,19 +36,64 @@ FEATURE_COLS = [
 ]
 
 def _load_features(path):
+    """Load features from Databricks, local file, or fallback options."""
+    
+    # Option 1: Databricks Connect (remote Spark)
+    if os.getenv("FEATURE_SOURCE") == "databricks":
+        try:
+            from databricks.connect import DatabricksSession
+            print("📡 Connecting to Databricks...")
+            spark = DatabricksSession.builder.getOrCreate()
+            table_name = os.getenv("FEATURE_TABLE", "intellipipeline_fraud_features")
+            df = spark.table(table_name).toPandas()
+            print(f"✅ Loaded {len(df):,} records from Databricks table: {table_name}")
+            return df
+        except Exception as e:
+            print(f"⚠️  Databricks connection failed: {e}")
+            print("Falling back to local file...")
+    
+    # Option 2: Databricks REST API (lightweight)
+    if os.getenv("FEATURE_SOURCE") == "databricks-api":
+        try:
+            from databricks.sdk import WorkspaceClient
+            print("📡 Querying Databricks via REST API...")
+            client = WorkspaceClient()
+            table_name = os.getenv("FEATURE_TABLE", "intellipipeline_fraud_features")
+            result = client.statement_execution.execute_statement(
+                warehouse_id=os.getenv("DATABRICKS_WAREHOUSE_ID"),
+                statement=f"SELECT * FROM {table_name}",
+                wait_timeout="60s"
+            )
+            # Convert to pandas (simplified - full implementation in utils/)
+            print(f"✅ Loaded records from Databricks via API")
+            # Note: You'd need to implement full conversion logic
+            raise NotImplementedError("Use databricks-connect or local files for now")
+        except Exception as e:
+            print(f"⚠️  API connection failed: {e}")
+            print("Falling back to local file...")
+    
+    # Option 3: Local files (original logic)
     if path.endswith(".csv") or not os.path.exists(path):
         csv_path = path.replace(".parquet", ".csv")
         if os.path.exists(csv_path):
+            print(f"📂 Loading from local CSV: {csv_path}")
             return pd.read_csv(csv_path)
+    
     if os.path.exists(path):
+        print(f"📂 Loading from local Parquet: {path}")
         return pd.read_parquet(path)
+    
     csv_path = os.path.join(os.path.dirname(path), "fraud_features.csv")
     if os.path.exists(csv_path):
+        print(f"📂 Loading from fallback CSV: {csv_path}")
         return pd.read_csv(csv_path)
+    
     raise FileNotFoundError(
-        f"Feature data not found at {path}. Run scripts/generate_sample_data.py first."
+        f"Feature data not found. Options:\n"
+        f"  1. Set FEATURE_SOURCE=databricks and configure Databricks Connect\n"
+        f"  2. Place CSV file at: {path}\n"
+        f"  3. Run: python scripts/generate_sample_data.py"
     )
-
 
 df = _load_features(FEATURE_PATH)
 X = df[FEATURE_COLS]

@@ -17,6 +17,7 @@ from routes.drift import drift_bp
 from routes.explain import explain_bp
 from routes.models import models_bp
 from routes.query import query_bp
+from routes.analytics import analytics_bp  # NEW: Import analytics blueprint
 
 app = Flask(__name__)
 CORS(app, origins=os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","))
@@ -25,6 +26,7 @@ app.register_blueprint(models_bp)
 app.register_blueprint(drift_bp)
 app.register_blueprint(explain_bp)
 app.register_blueprint(query_bp)
+app.register_blueprint(analytics_bp)  # NEW: Register analytics blueprint
 
 
 @app.route("/health")

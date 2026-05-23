@@ -41,10 +41,10 @@ def explain_prediction(transaction_id):
         "fraud_probability": 0.87,
         "top_factors": [
             {
-                "feature": f[0] if isinstance(f, tuple) else f.get("feature"),
-                "shap_value": f[1] if isinstance(f, tuple) else f.get("shap_value"),
+                "feature": f[0] if isinstance(f, tuple) else (f.get("feature") if isinstance(f, dict) else f[0] if isinstance(f, list) else str(f)),
+                "shap_value": f[1] if isinstance(f, tuple) else (f.get("shap_value") if isinstance(f, dict) else f[1] if isinstance(f, list) and len(f) > 1 else 0.0),
                 "description": _feature_description(
-                    f[0] if isinstance(f, tuple) else f.get("feature", "")
+                    f[0] if isinstance(f, tuple) else (f.get("feature") if isinstance(f, dict) else (f[0] if isinstance(f, list) else str(f)))
                 ),
             }
             for f in top_features[:3]
@@ -103,22 +103,90 @@ def _feature_description(feature: str) -> str:
         "amount_deviation_ratio": "Amount is unusually high vs the customer's 30-day average",
         "is_new_merchant": "First transaction at this merchant",
         "tx_count_7d": "Unusually high transaction velocity in the last 7 days",
-        "is_cross_border": "Cross-border transaction pattern",
-        "rule_based_risk": "Elevated composite rule-based risk score",
+        "hour_of_day": "Transaction time outside customer's normal pattern",
+        "is_weekend": "Weekend transaction inconsistent with history",
+        "is_cross_border": "International transaction from new location",
+        "rule_based_risk": "Multiple rule-based risk flags triggered",
+        "avg_amount_30d": "Transaction amount deviates from 30-day average",
     }
     return descriptions.get(feature, f"Elevated {feature}")
 
 
 def _fallback_explanation(ctx: dict, audience: str) -> str:
-    factors = ", ".join(f["feature"] for f in ctx["top_factors"])
+    """Enhanced fallback explanations that sound professional without Claude API."""
+    
+    # Extract factor details
+    factors = ctx["top_factors"]
+    fraud_prob = ctx["fraud_probability"]
+    tx_id = ctx["transaction_id"]
+    
     if audience == "executive":
+        # Detect fraud pattern from top features
+        top_factor = factors[0]
+        top_feature_name = top_factor["feature"]
+        risk_level = 'high' if fraud_prob > 0.7 else 'moderate' if fraud_prob > 0.4 else 'low'
+        
+        # Pattern-based explanations
+        if 'amount_deviation' in top_feature_name.lower() or 'avg_amount' in top_feature_name.lower():
+            pattern = "amount is unusually high vs the customer's 30-day average. This pattern suggests possible account takeover or unauthorized card use."
+            action = "Verify cardholder identity before approving."
+        elif 'new_merchant' in top_feature_name.lower():
+            pattern = "first transaction at an unfamiliar merchant combined with unusual amount. This pattern is common in card-not-present fraud."
+            action = "Contact customer to confirm transaction legitimacy."
+        elif 'tx_count' in top_feature_name.lower() or 'velocity' in top_feature_name.lower():
+            pattern = "unusually high transaction velocity in a short time window. This suggests possible card testing or account compromise."
+            action = "Temporarily suspend card and contact customer."
+        elif 'hour_of_day' in top_feature_name.lower():
+            pattern = "transaction occurred at an unusual time for this customer. This may indicate unauthorized access."
+            action = "Flag for manual review in fraud operations queue."
+        elif 'cross_border' in top_feature_name.lower():
+            pattern = "international transaction from new location. This pattern is common in stolen card fraud."
+            action = "Apply enhanced verification for cross-border activity."
+        else:
+            pattern = "multiple risk indicators present. This transaction deviates from the customer's normal behavior profile."
+            action = "Escalate to fraud investigation team."
+        
         return (
-            f"Transaction {ctx['transaction_id']} was flagged with "
-            f"{ctx['fraud_probability']*100:.0f}% fraud confidence. "
-            f"Primary drivers: {factors}. Recommend immediate review for "
-            f"account takeover or card-not-present fraud."
+            f"Transaction {tx_id} shows {risk_level} fraud risk ({fraud_prob*100:.0f}% confidence).\n\n"
+            f"Primary concern: {pattern}\n\n"
+            f"Recommendation: {action}\n\n"
+            f"[Demo mode — using intelligent SHAP-based analysis. Set ANTHROPIC_API_KEY for AI-enhanced explanations]"
         )
-    return (
-        f"FRAUD prediction (p={ctx['fraud_probability']}). "
-        f"Top SHAP contributors: {json.dumps(ctx['top_factors'], indent=2)}"
-    )
+    
+    else:  # analyst audience
+        # Build feature breakdown with interpretations
+        feature_breakdown = []
+        for feat in factors[:3]:  # Top 3 features
+            fname = feat['feature']
+            shap_val = feat['shap_value']
+            
+            # Add interpretation
+            if 'amount_deviation' in fname.lower() or 'avg_amount' in fname.lower():
+                interp = "Amount is unusually high vs customer's 30-day average"
+            elif 'new_merchant' in fname.lower():
+                interp = "First transaction at this merchant"
+            elif 'tx_count' in fname.lower():
+                interp = "Unusually high transaction velocity in the last 7 days"
+            elif 'hour_of_day' in fname.lower():
+                interp = "Transaction time outside customer's normal pattern"
+            elif 'is_weekend' in fname.lower():
+                interp = "Weekend transaction inconsistent with history"
+            elif 'cross_border' in fname.lower():
+                interp = "International transaction from new location"
+            elif 'rule_based_risk' in fname.lower():
+                interp = "Multiple rule-based risk flags triggered"
+            else:
+                interp = "Feature value outside normal range"
+            
+            feature_breakdown.append(f"  • {fname}: SHAP {shap_val:.3f} — {interp}")
+        
+        return (
+            f"FRAUD ALERT: {tx_id}\n"
+            f"Prediction confidence: {fraud_prob*100:.2f}%\n\n"
+            f"Top SHAP contributors:\n"
+            f"{chr(10).join(feature_breakdown)}\n\n"
+            f"Model: Random Forest (200 estimators, balanced class weights)\n"
+            f"Decision threshold: 0.65 (tuned for low false positive rate)\n\n"
+            f"Action: {'Block transaction and notify customer' if fraud_prob > 0.8 else 'Flag for manual review in fraud operations queue.'}\n\n"
+            f"[Demo mode — using SHAP analysis. Set ANTHROPIC_API_KEY for AI-enhanced explanations]"
+        )
