@@ -1,4 +1,8 @@
-# IntelliPipeline — local development dependencies
+# Full-stack Azure + Airflow dependencies (NOT used by Vercel)
+# Local lite:  pip install -r requirements-local.txt
+# API only:     pip install -r api/requirements.txt
+# Airflow:      pip install -r orchestration/requirements.txt
+
 apache-airflow[azure]==2.9.0
 azure-ai-ml>=1.12.0
 azure-identity>=1.15.0
@@ -12,8 +16,6 @@ numpy>=1.26.0
 pyarrow>=14.0.0
 shap>=0.44.0
 anthropic>=0.25.0
-flask>=3.0.0
-flask-cors>=4.0.0
 great-expectations>=0.18.0
 evidently>=0.4.0
 scipy>=1.12.0
