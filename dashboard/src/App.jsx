@@ -4,7 +4,7 @@ import DriftMonitor from "./components/DriftMonitor";
 import XAIExplainer from "./components/XAIExplainer";
 import GreenMetrics from "./components/GreenMetrics";
 import NLQueryInterface from "./components/NLQueryInterface";
-import KPIMetrics from "./components/kpimetrics";
+import KPIMetrics from "./components/kpiMetrics";
 import LiveTransactionFeed from "./components/LiveTransactionFeed";
 import CustomerSegmentation from "./components/CustomerSegmentation";
 import "./App.css";

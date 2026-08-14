@@ -23,3 +23,5 @@ webserver_config.py
 scaler.pkl
 xai_report.json
 !/data/xai_report.json
+.vercel
+.env*

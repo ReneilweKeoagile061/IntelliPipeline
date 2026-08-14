@@ -1,0 +1,12 @@
+api/
+orchestration/
+ml_training/
+feature_store/
+serving/
+scripts/
+data/
+notebooks/
+docker/
+requirements-full.txt
+requirements-local.txt
+*.py
