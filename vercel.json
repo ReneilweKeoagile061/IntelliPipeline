@@ -1,9 +1,13 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
+﻿{
   "buildCommand": "cd dashboard && npm run build",
-  "devCommand": "cd dashboard && npm run dev",
   "installCommand": "cd dashboard && npm install",
   "outputDirectory": "dashboard/dist",
   "framework": "vite",
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+  "functions": {
+    "api/app.py": { "runtime": "@vercel/python@4.3.0" }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/app.py" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
 }
