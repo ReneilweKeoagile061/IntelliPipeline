@@ -7,7 +7,7 @@ __pycache__/
 mlruns/
 data/*.parquet
 data/*.csv
-data/local/
+data/local/*
 !data/.gitkeep
 !data/local/.gitkeep
 .tools/
@@ -25,3 +25,7 @@ xai_report.json
 !/data/xai_report.json
 .vercel
 .env*
+
+!data/local/model_metrics.json
+!data/local/drift_signals/
+!data/local/drift_signals/latest_drift.json

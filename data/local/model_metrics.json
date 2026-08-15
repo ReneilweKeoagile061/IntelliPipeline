@@ -1,0 +1,12 @@
+{
+  "accuracy": 0.975,
+  "false_positive_rate": 0.01907216494845361,
+  "f1_score": 0.6527777777777778,
+  "roc_auc": 0.974995704467354,
+  "fpr_by_demographic": {
+    "young": 0.05,
+    "middle": 0.048,
+    "senior": 0.052
+  },
+  "run_id": "f1f62742ae904949b7d5d0b294c0f1cb"
+}

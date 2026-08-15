@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-08-15T09:38:17.276352+00:00",
+  "psi_score": 0.034464860687868866,
+  "kl_divergence": 0.013958206964460592,
+  "accuracy_drop": 0.0,
+  "baseline_mean": 0.20088350238038588,
+  "current_mean": 0.1994514963362223,
+  "drift_detected": false,
+  "severity": "LOW",
+  "mode": "local",
+  "should_retrain": false
+}
