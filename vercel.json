@@ -1,10 +1,16 @@
 {
-  "buildCommand": "cd dashboard && npm run build",
-  "installCommand": "cd dashboard && npm install",
-  "outputDirectory": "dashboard/dist",
-  "framework": "vite",
+  "services": {
+    "dashboard": {
+      "root": "dashboard",
+      "framework": "vite"
+    },
+    "api": {
+      "root": "api",
+      "entrypoint": "app:app"
+    }
+  },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/app.py" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/api/(.*)", "destination": { "service": "api" } },
+    { "source": "/((?!api/).*)", "destination": { "service": "dashboard" } }
   ]
 }
