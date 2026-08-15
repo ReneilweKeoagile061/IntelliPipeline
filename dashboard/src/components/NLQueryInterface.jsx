@@ -32,12 +32,23 @@ export default function NLQueryInterface() {
       setMessages(prev => [...prev, {
         role: "assistant",
         content: res.answer,
-        metadata: { sources: res.context_sources, timestamp: res.timestamp },
+        metadata: {
+          sources: res.context_sources,
+          timestamp: res.timestamp,
+          note: res.note,
+        },
       }]);
-    } catch {
+    } catch (err) {
+      const status = err?.response?.status;
+      const message =
+        status === 429
+          ? "The AI assistant is rate-limited right now — please wait a moment and try again."
+          : status
+            ? `The AI assistant returned an error (${status}). Please try again shortly.`
+            : "Couldn't reach the AI assistant — check your connection and try again.";
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: "Could not reach the API. Start the Flask backend: python api/app.py",
+        content: message,
         error: true,
       }]);
     } finally {
@@ -49,7 +60,7 @@ export default function NLQueryInterface() {
     <div className="nl-query">
       <div className="nl-header">
         <h3>IntelliPipeline Intelligence Query</h3>
-        <p>Claude API + RAG — Azure ML &amp; monitoring logs</p>
+        <p>Gemini API + RAG — Azure ML &amp; monitoring logs</p>
       </div>
 
       <div className="nl-messages">
@@ -57,7 +68,10 @@ export default function NLQueryInterface() {
           <div key={i} className={`nl-bubble ${m.role}`}>
             <div className={`nl-content ${m.error ? "error" : ""}`}>{m.content}</div>
             {m.metadata?.sources && (
-              <div className="nl-meta">Sources: {m.metadata.sources.join(", ")}</div>
+              <div className="nl-meta">
+                Sources: {m.metadata.sources.join(", ")}
+                {m.metadata.note ? ` — ${m.metadata.note}` : ""}
+              </div>
             )}
           </div>
         ))}
