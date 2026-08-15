@@ -3,8 +3,8 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from google.genai.errors import ServerError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
+from google.genai.errors import ServerError, ClientError
 
 from flask import Blueprint, jsonify, request
 
@@ -296,6 +296,15 @@ Try asking:
 Your question: "{question}" """
 
 
+def _is_retryable(exc: BaseException) -> bool:
+    """Retry on server-side overload, and on client-side rate limiting (429)."""
+    if isinstance(exc, ServerError):
+        return True
+    if isinstance(exc, ClientError) and getattr(exc, "code", None) == 429:
+        return True
+    return False
+
+
 @query_bp.route("/api/query", methods=["POST"])
 def natural_language_query():
     data = request.get_json() or {}
@@ -356,7 +365,7 @@ Be concise, accurate, and honest about what you don't know."""
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=8),
-        retry=retry_if_exception_type(ServerError),
+        retry=retry_if_exception(_is_retryable),
         reraise=True,
     )
     def _call_gemini():
@@ -371,8 +380,8 @@ Be concise, accurate, and honest about what you don't know."""
 
     try:
         response = _call_gemini()
-    except ServerError:
-        # Gemini free tier overloaded even after retries — fall back gracefully
+    except (ServerError, ClientError):
+        # Gemini overloaded or rate-limited, even after retries — fall back gracefully
         return jsonify(
             {
                 "answer": _intelligent_fallback_answer(question),
