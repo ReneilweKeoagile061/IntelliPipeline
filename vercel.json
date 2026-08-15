@@ -1,15 +1,16 @@
 {
   "services": {
     "dashboard": {
-      "root": "dashboard",
+      "root": "dashboard/",
       "framework": "vite"
     },
     "api": {
-      "entrypoint": "api/app.py"
+      "root": "api/",
+      "entrypoint": "app:app"
     }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": { "service": "api" } },
-    { "source": "/((?!api/).*)", "destination": { "service": "dashboard" } }
+    { "source": "/(.*)", "destination": { "service": "dashboard" } }
   ]
 }
