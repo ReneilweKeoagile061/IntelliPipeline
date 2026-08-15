@@ -150,13 +150,50 @@ def fetch_rag_context(question: str) -> str:
     return "\n\n---\n\n".join(context_parts)
 
 
-def _intelligent_fallback_answer(question: str) -> str:
-    """Enhanced fallback that provides contextual answers based on question keywords."""
-    
+def _extract_json_block(context: str, label: str):
+    """Pull a JSON object out of a labeled section of the RAG context, if present."""
+    marker = f"{label}:\n"
+    idx = context.find(marker)
+    if idx == -1:
+        return None
+    start = idx + len(marker)
+    end = context.find("\n\n---\n\n", start)
+    block = context[start:end] if end != -1 else context[start:]
+    try:
+        return json.loads(block)
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+
+def _intelligent_fallback_answer(question: str, context: str = "") -> str:
+    """Enhanced fallback that provides contextual answers based on question keywords.
+    Where real local data is available in `context`, it's used in place of
+    hardcoded placeholder numbers.
+
+    NOTE ON ORDERING: patterns are checked most-specific-first. Drift is
+    checked before Performance because a question like "current model drift
+    status" contains both "model" and "drift" — if Performance were checked
+    first with a generic 'model' keyword, it would wrongly win. Keep new
+    patterns' keyword lists as specific as possible, and place broader
+    patterns later in this chain.
+    """
+
     question_lower = question.lower()
-    
+
     # Pattern 1: Fraud patterns / features / SHAP
     if any(word in question_lower for word in ['fraud pattern', 'top feature', 'shap', 'important feature', 'driver']):
+        real_xai = _extract_json_block(context, "LOCAL XAI REPORT")
+        if real_xai and real_xai.get("top_features"):
+            lines = "\n".join(
+                f"{i+1}. **{name}** (importance: {score:.4f})"
+                for i, (name, score) in enumerate(real_xai["top_features"])
+            )
+            return f"""Based on SHAP analysis from the latest local run (Run ID: `{real_xai.get('run_id', 'unknown')}`), the top fraud indicators are:
+
+{lines}
+
+Explanation stability: {real_xai.get('explanation_stability', 'N/A')}
+Interpretable population: {real_xai.get('interpretable_for_pct', 'N/A')}"""
         return """Based on SHAP analysis from the current model, the top fraud patterns are:
 
 1. **Amount Deviation** (SHAP: 0.42) — Transactions 3-5x higher than customer's 30-day average indicate possible account takeover. This appears in 68% of confirmed fraud cases.
@@ -169,8 +206,46 @@ def _intelligent_fallback_answer(question: str) -> str:
 
 Current model achieves 98.99% accuracy with 0.45% false positive rate."""
 
-    # Pattern 2: Model performance / metrics
-    elif any(word in question_lower for word in ['performance', 'accuracy', 'metric', 'confusion matrix', 'model']):
+    # Pattern 2: Drift detection (checked before Performance — see note above)
+    elif any(word in question_lower for word in ['drift', 'psi', 'data quality', 'distribution']):
+        real_drift = _extract_json_block(context, "LOCAL DRIFT REPORT")
+        if real_drift:
+            status = "✅ Model performance stable" if not real_drift.get("drift_detected") else "⚠️ Drift detected"
+            return f"""Drift Detection Status (from latest local run, {real_drift.get('timestamp', 'unknown time')}):
+
+**PSI Score:** {real_drift.get('psi_score', 'N/A')}
+**KL Divergence:** {real_drift.get('kl_divergence', 'N/A')}
+**Severity:** {real_drift.get('severity', 'N/A')}
+**Status:** {status}
+**Accuracy Drop:** {real_drift.get('accuracy_drop', 'N/A')}
+**Auto-Retrain Triggered:** {real_drift.get('should_retrain', 'N/A')}
+
+**Thresholds:**
+- PSI < 0.1: No action needed
+- PSI 0.1-0.25: Monitor closely
+- PSI > 0.25: Retrain recommended
+
+Drift monitoring runs daily at 2:00 AM UTC. Auto-retraining triggers when PSI > 0.25 for 3 consecutive days."""
+        return """Drift Detection Status:
+
+No local drift report is currently available. Run the local pipeline (`python scripts/run_local_pipeline.py`) to generate one.
+
+**Thresholds:**
+- PSI < 0.1: No action needed
+- PSI 0.1-0.25: Monitor closely
+- PSI > 0.25: Retrain recommended
+
+Drift monitoring runs daily at 2:00 AM UTC. Auto-retraining triggers when PSI > 0.25 for 3 consecutive days."""
+
+    # Pattern 3: Model performance / metrics
+    elif any(word in question_lower for word in ['performance', 'accuracy', 'metric', 'confusion matrix']):
+        real_metrics = _extract_json_block(context, "LOCAL MODEL METRICS")
+        if real_metrics:
+            return f"""Model Performance Metrics (from latest local run):
+
+{json.dumps(real_metrics, indent=2)}
+
+These figures come directly from the most recent local training run, not a fixed demo value."""
         return """Model Performance Metrics (Current Production Model):
 
 **Classification Metrics:**
@@ -188,26 +263,6 @@ Current model achieves 98.99% accuracy with 0.45% false positive rate."""
 - True Positives: 3 (correctly caught fraud)
 
 **Optimization Target:** Minimizing false positives while maintaining fraud detection capability. Current 0.45% FPR represents 96% improvement over baseline rule-based system (12% FPR)."""
-
-    # Pattern 3: Drift detection
-    elif any(word in question_lower for word in ['drift', 'psi', 'data quality', 'distribution']):
-        return """Drift Detection Status:
-
-**Current PSI Score:** 0.0001 (No drift detected)
-**KL Divergence:** 0.0847
-**Status:** ✅ Model performance stable
-
-**Thresholds:**
-- PSI < 0.1: No action needed
-- PSI 0.1-0.25: Monitor closely
-- PSI > 0.25: Retrain recommended
-
-**Recent Test Scenarios:**
-1. **No Drift Test:** PSI = 0.0001 — Production distribution matches training
-2. **Moderate Drift Test:** PSI = 1.8759 — Simulated shift in transaction amounts (retrain triggered)
-3. **Significant Drift Test:** PSI = 1.3394 — Simulated shift in time patterns (retrain triggered)
-
-Drift monitoring runs daily at 2:00 AM UTC. Auto-retraining triggers when PSI > 0.25 for 3 consecutive days."""
 
     # Pattern 4: Energy / Green metrics
     elif any(word in question_lower for word in ['energy', 'green', 'carbon', 'co2', 'kwh']):
@@ -228,7 +283,9 @@ Drift monitoring runs daily at 2:00 AM UTC. Auto-retraining triggers when PSI > 
 - Energy per training epoch: 2.8 kWh
 - Delta Lake optimization: Saves ~30% vs. Parquet reprocessing
 
-**ESG Compliance:** Tracking enabled for Scope 2 emissions reporting (electricity consumption from ML operations)."""
+**ESG Compliance:** Tracking enabled for Scope 2 emissions reporting (electricity consumption from ML operations).
+
+Note: no local energy-tracking data is currently wired into this pipeline — these are illustrative figures, not measured values."""
 
     # Pattern 5: Retraining / pipeline automation
     elif any(word in question_lower for word in ['retrain', 'pipeline', 'automation', 'trigger']):
@@ -254,7 +311,13 @@ Drift monitoring runs daily at 2:00 AM UTC. Auto-retraining triggers when PSI > 
 
     # Pattern 6: Explainability / SHAP / XAI
     elif any(word in question_lower for word in ['explain', 'shap', 'xai', 'interpretability']):
-        return """XAI (Explainable AI) Approach:
+        real_xai = _extract_json_block(context, "LOCAL XAI REPORT")
+        stability_line = (
+            f"\n\n**From your latest local run:** explanation stability {real_xai.get('explanation_stability', 'N/A')}, "
+            f"interpretable for {real_xai.get('interpretable_for_pct', 'N/A')} of predictions."
+            if real_xai else ""
+        )
+        return f"""XAI (Explainable AI) Approach:
 
 **Method:** SHAP (SHapley Additive exPlanations)
 - Calculates each feature's contribution to every prediction
@@ -272,7 +335,7 @@ Transaction TX-2025-88421 flagged as fraud (87% confidence)
 - is_new_merchant: +0.31 (first time at this merchant)
 - tx_count_7d: +0.18 (10 transactions vs. normal 3)
 
-**Performance:** SHAP calculation adds ~15ms per prediction (negligible for fraud detection use case)."""
+**Performance:** SHAP calculation adds ~15ms per prediction (negligible for fraud detection use case).{stability_line}"""
 
     # Generic fallback for unmatched queries
     else:
@@ -321,7 +384,7 @@ def natural_language_query():
         # Use intelligent fallback instead of generic demo message
         return jsonify(
             {
-                "answer": _intelligent_fallback_answer(question),
+                "answer": _intelligent_fallback_answer(question, context),
                 "context_sources": ["Demo Dataset", "Local XAI", "SHAP Analysis"],
                 "timestamp": datetime.utcnow().isoformat(),
                 "tokens_used": 0,
@@ -384,7 +447,7 @@ Be concise, accurate, and honest about what you don't know."""
         # Gemini overloaded or rate-limited, even after retries — fall back gracefully
         return jsonify(
             {
-                "answer": _intelligent_fallback_answer(question),
+                "answer": _intelligent_fallback_answer(question, context),
                 "context_sources": ["Demo Dataset", "Local XAI", "SHAP Analysis"],
                 "timestamp": datetime.utcnow().isoformat(),
                 "tokens_used": 0,
