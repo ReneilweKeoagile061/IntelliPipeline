@@ -97,20 +97,32 @@ def fetch_rag_context(question: str) -> str:
         except Exception as e:
             context_parts.append(f"Blob context unavailable: {e}")
 
-    data_dir = Path(__file__).resolve().parents[2] / "data"
+    # Two possible layouts: full repo checkout (local dev) vs. the
+    # api/-only Vercel deployment, which ships its own data/ copy.
+    data_dir_candidates = [
+        Path(__file__).resolve().parents[2] / "data",  # repo-root/data
+        Path(__file__).resolve().parents[1] / "data",  # api/data
+    ]
 
-    metrics_path = data_dir / "local" / "model_metrics.json"
-    if metrics_path.exists():
+    def _first_existing(relative_path: str):
+        for base in data_dir_candidates:
+            candidate = base / relative_path
+            if candidate.exists():
+                return candidate
+        return None
+
+    metrics_path = _first_existing("local/model_metrics.json")
+    if metrics_path:
         with open(metrics_path, encoding="utf-8") as f:
             context_parts.append(f"LOCAL MODEL METRICS:\n{f.read()}")
 
-    drift_path = data_dir / "local" / "drift_signals" / "latest_drift.json"
-    if drift_path.exists():
+    drift_path = _first_existing("local/drift_signals/latest_drift.json")
+    if drift_path:
         with open(drift_path, encoding="utf-8") as f:
             context_parts.append(f"LOCAL DRIFT REPORT:\n{f.read()}")
 
-    xai_path = data_dir / "xai_report.json"
-    if xai_path.exists():
+    xai_path = _first_existing("xai_report.json")
+    if xai_path:
         with open(xai_path, encoding="utf-8") as f:
             context_parts.append(f"LOCAL XAI REPORT:\n{f.read()}")
 
