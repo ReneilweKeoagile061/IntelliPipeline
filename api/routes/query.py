@@ -3,6 +3,8 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from google.genai.errors import ServerError
 
 from flask import Blueprint, jsonify, request
 
@@ -96,6 +98,17 @@ def fetch_rag_context(question: str) -> str:
             context_parts.append(f"Blob context unavailable: {e}")
 
     data_dir = Path(__file__).resolve().parents[2] / "data"
+
+    metrics_path = data_dir / "local" / "model_metrics.json"
+    if metrics_path.exists():
+        with open(metrics_path, encoding="utf-8") as f:
+            context_parts.append(f"LOCAL MODEL METRICS:\n{f.read()}")
+
+    drift_path = data_dir / "local" / "drift_signals" / "latest_drift.json"
+    if drift_path.exists():
+        with open(drift_path, encoding="utf-8") as f:
+            context_parts.append(f"LOCAL DRIFT REPORT:\n{f.read()}")
+
     xai_path = data_dir / "xai_report.json"
     if xai_path.exists():
         with open(xai_path, encoding="utf-8") as f:
@@ -149,18 +162,18 @@ Current model achieves 98.99% accuracy with 0.45% false positive rate."""
         return """Model Performance Metrics (Current Production Model):
 
 **Classification Metrics:**
-• Accuracy: 98.99%
-• Precision: 3.23%
-• Recall: 2.61%
-• F1 Score: 0.0288
-• ROC AUC: 0.7455
-• False Positive Rate: 0.45%
+- Accuracy: 98.99%
+- Precision: 3.23%
+- Recall: 2.61%
+- F1 Score: 0.0288
+- ROC AUC: 0.7455
+- False Positive Rate: 0.45%
 
 **Confusion Matrix (Test Set, n=20,000):**
-• True Negatives: 19,795 (correctly identified legitimate transactions)
-• False Positives: 90 (legitimate flagged as fraud)
-• False Negatives: 112 (missed fraud cases)
-• True Positives: 3 (correctly caught fraud)
+- True Negatives: 19,795 (correctly identified legitimate transactions)
+- False Positives: 90 (legitimate flagged as fraud)
+- False Negatives: 112 (missed fraud cases)
+- True Positives: 3 (correctly caught fraud)
 
 **Optimization Target:** Minimizing false positives while maintaining fraud detection capability. Current 0.45% FPR represents 96% improvement over baseline rule-based system (12% FPR)."""
 
@@ -173,9 +186,9 @@ Current model achieves 98.99% accuracy with 0.45% false positive rate."""
 **Status:** ✅ Model performance stable
 
 **Thresholds:**
-• PSI < 0.1: No action needed
-• PSI 0.1-0.25: Monitor closely
-• PSI > 0.25: Retrain recommended
+- PSI < 0.1: No action needed
+- PSI 0.1-0.25: Monitor closely
+- PSI > 0.25: Retrain recommended
 
 **Recent Test Scenarios:**
 1. **No Drift Test:** PSI = 0.0001 — Production distribution matches training
@@ -189,19 +202,19 @@ Drift monitoring runs daily at 2:00 AM UTC. Auto-retraining triggers when PSI > 
         return """Green MLOps Metrics (Last 7 Days):
 
 **Energy Consumption:**
-• Model Training: 8.4 kWh (Random Forest, 200 estimators, 3 CV folds)
-• Feature Engineering: 2.1 kWh (Delta Lake aggregations, 100K transactions)
-• Inference (100K predictions): 1.9 kWh
-• **Total:** 12.4 kWh
+- Model Training: 8.4 kWh (Random Forest, 200 estimators, 3 CV folds)
+- Feature Engineering: 2.1 kWh (Delta Lake aggregations, 100K transactions)
+- Inference (100K predictions): 1.9 kWh
+- **Total:** 12.4 kWh
 
 **Carbon Footprint:**
-• CO₂ Equivalent: 5.2 kg (assuming 0.42 kg CO₂/kWh grid mix)
-• Equivalent to: ~12 miles driven in average car
+- CO₂ Equivalent: 5.2 kg (assuming 0.42 kg CO₂/kWh grid mix)
+- Equivalent to: ~12 miles driven in average car
 
 **Efficiency Metrics:**
-• Energy per prediction: 0.019 Wh
-• Energy per training epoch: 2.8 kWh
-• Delta Lake optimization: Saves ~30% vs. Parquet reprocessing
+- Energy per prediction: 0.019 Wh
+- Energy per training epoch: 2.8 kWh
+- Delta Lake optimization: Saves ~30% vs. Parquet reprocessing
 
 **ESG Compliance:** Tracking enabled for Scope 2 emissions reporting (electricity consumption from ML operations)."""
 
@@ -232,9 +245,9 @@ Drift monitoring runs daily at 2:00 AM UTC. Auto-retraining triggers when PSI > 
         return """XAI (Explainable AI) Approach:
 
 **Method:** SHAP (SHapley Additive exPlanations)
-• Calculates each feature's contribution to every prediction
-• Based on game theory (Shapley values from cooperative game theory)
-• Model-agnostic, works with any ML algorithm
+- Calculates each feature's contribution to every prediction
+- Based on game theory (Shapley values from cooperative game theory)
+- Model-agnostic, works with any ML algorithm
 
 **Why SHAP for Banking:**
 1. **Regulatory Compliance** — Meets GDPR Article 22 (right to explanation), SR 11-7 (model risk management)
@@ -243,30 +256,30 @@ Drift monitoring runs daily at 2:00 AM UTC. Auto-retraining triggers when PSI > 
 
 **Example Output:**
 Transaction TX-2025-88421 flagged as fraud (87% confidence)
-• amount_deviation_ratio: +0.42 (amount 4.2x higher than usual)
-• is_new_merchant: +0.31 (first time at this merchant)
-• tx_count_7d: +0.18 (10 transactions vs. normal 3)
+- amount_deviation_ratio: +0.42 (amount 4.2x higher than usual)
+- is_new_merchant: +0.31 (first time at this merchant)
+- tx_count_7d: +0.18 (10 transactions vs. normal 3)
 
 **Performance:** SHAP calculation adds ~15ms per prediction (negligible for fraud detection use case)."""
 
     # Generic fallback for unmatched queries
     else:
-        return f"""[Demo mode — set ANTHROPIC_API_KEY for AI-powered query understanding]
+        return f"""[Demo mode — set GEMINI_API_KEY for AI-powered query understanding]
 
 Based on IntelliPipeline MLflow context:
-• Current model: Random Forest (200 estimators, max_depth=15)
-• Accuracy: 98.99% | FPR: 0.45% | ROC AUC: 0.7455
-• Feature store: Unity Catalog Delta Lake table
-• Drift monitoring: PSI-based with auto-retrain triggers
-• Explainability: Real-time SHAP analysis
+- Current model: Random Forest (200 estimators, max_depth=15)
+- Accuracy: 98.99% | FPR: 0.45% | ROC AUC: 0.7455
+- Feature store: Unity Catalog Delta Lake table
+- Drift monitoring: PSI-based with auto-retrain triggers
+- Explainability: Real-time SHAP analysis
 
 Try asking:
-• "What are the top fraud patterns?"
-• "Show me model performance metrics"
-• "Is there any drift detected?"
-• "How much energy did the model use?"
-• "When does auto-retraining trigger?"
-• "Explain how SHAP works"
+- "What are the top fraud patterns?"
+- "Show me model performance metrics"
+- "Is there any drift detected?"
+- "How much energy did the model use?"
+- "When does auto-retraining trigger?"
+- "Explain how SHAP works"
 
 Your question: "{question}" """
 
@@ -281,7 +294,7 @@ def natural_language_query():
         return jsonify({"error": "Question required"}), 400
 
     context = fetch_rag_context(question)
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    api_key = os.getenv("GEMINI_API_KEY")
 
     if not api_key:
         # Use intelligent fallback instead of generic demo message
@@ -295,9 +308,10 @@ def natural_language_query():
             }
         )
 
-    import anthropic
+    from google import genai
+    from google.genai import types
 
-    claude = anthropic.Anthropic(api_key=api_key)
+    gemini = genai.Client(api_key=api_key)
 
     system_prompt = """You are IntelliPipeline's AI Operations assistant.
 You help data scientists, MLOps engineers, and business stakeholders understand
@@ -306,27 +320,72 @@ the fraud detection ML platform's current state, performance, and decisions.
 Always ground your answers in the provided context data.
 Be concise, accurate, and honest about what you don't know."""
 
-    messages = conversation_history + [
-        {
-            "role": "user",
-            "content": f"Context from IntelliPipeline:\n\n{context}\n\n---\n\nQuestion: {question}",
-        }
+    # Gemini uses role "model" instead of "assistant", and expects
+    # Content/Part objects rather than plain role/content dicts.
+    gemini_history = [
+        types.Content(
+            role="model" if m.get("role") == "assistant" else m.get("role", "user"),
+            parts=[types.Part.from_text(text=m.get("content", ""))],
+        )
+        for m in conversation_history
     ]
 
-    response = claude.messages.create(
-        model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
-        max_tokens=800,
-        system=system_prompt,
-        messages=messages,
-    )
+    contents = gemini_history + [
+        types.Content(
+            role="user",
+            parts=[
+                types.Part.from_text(
+                    text=f"Context from IntelliPipeline:\n\n{context}\n\n---\n\nQuestion: {question}"
+                )
+            ],
+        )
+    ]
 
-    answer = response.content[0].text
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=8),
+        retry=retry_if_exception_type(ServerError),
+        reraise=True,
+    )
+    def _call_gemini():
+        return gemini.models.generate_content(
+            model=os.getenv("GEMINI_MODEL", "gemini-flash-latest"),
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                max_output_tokens=800,
+            ),
+        )
+
+    try:
+        response = _call_gemini()
+    except ServerError:
+        # Gemini free tier overloaded even after retries — fall back gracefully
+        return jsonify(
+            {
+                "answer": _intelligent_fallback_answer(question),
+                "context_sources": ["Demo Dataset", "Local XAI", "SHAP Analysis"],
+                "timestamp": datetime.utcnow().isoformat(),
+                "tokens_used": 0,
+                "demo_mode": True,
+                "note": "Gemini temporarily unavailable — showing offline analysis",
+            }
+        )
+
+    answer = response.text
+
+    usage = response.usage_metadata
+    tokens_used = (
+        (usage.prompt_token_count or 0) + (usage.candidates_token_count or 0)
+        if usage
+        else 0
+    )
 
     return jsonify(
         {
             "answer": answer,
             "context_sources": ["Azure ML MLflow", "Drift Monitor", "XAI Report"],
             "timestamp": datetime.utcnow().isoformat(),
-            "tokens_used": response.usage.input_tokens + response.usage.output_tokens,
+            "tokens_used": tokens_used,
         }
     )
