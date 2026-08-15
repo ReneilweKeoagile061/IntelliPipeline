@@ -49,6 +49,16 @@ const insightStyle = (type) => ({
   recommendation: { bg: "rgba(139,92,246,0.08)", border: "rgba(139,92,246,0.25)", icon: "💡", color: "#a78bfa" },
 }[type] ?? { bg: "var(--bg-2)", border: "var(--border)", icon: "·", color: "var(--text-muted)" });
 
+function isSegmentationPayload(data) {
+  return (
+    data &&
+    Array.isArray(data.segmentation) &&
+    Array.isArray(data.regions) &&
+    data.overall_stats &&
+    Array.isArray(data.insights)
+  );
+}
+
 export default function CustomerSegmentation() {
   const [data, setData]     = useState(null);
   const [loading, setLoading] = useState(true);
@@ -56,7 +66,7 @@ export default function CustomerSegmentation() {
 
   useEffect(() => {
     getCustomerSegmentation()
-      .then(res => setData(res.data))
+      .then((res) => setData(isSegmentationPayload(res.data) ? res.data : FALLBACK))
       .catch(() => setData(FALLBACK))
       .finally(() => setLoading(false));
   }, []);

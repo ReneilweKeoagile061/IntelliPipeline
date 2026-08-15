@@ -11,12 +11,13 @@ export default function LiveTransactionFeed() {
   const fetchTransactions = useCallback(() => {
     getLiveTransactions(20)
       .then((res) => {
-        setTransactions(res.data.transactions);
+        const txs = Array.isArray(res.data?.transactions) ? res.data.transactions : [];
+        setTransactions(txs);
         setStats({
-          total: res.data.total_count,
-          fraud: res.data.fraud_count,
-          legit: res.data.legit_count,
-          avgLatency: res.data.avg_processing_time_ms,
+          total: res.data.total_count ?? txs.length,
+          fraud: res.data.fraud_count ?? txs.filter((t) => t.prediction === "FRAUD").length,
+          legit: res.data.legit_count ?? txs.filter((t) => t.prediction !== "FRAUD").length,
+          avgLatency: res.data.avg_processing_time_ms ?? 0,
         });
       })
       .catch(() => {

@@ -5,5 +5,5 @@
   "installCommand": "cd dashboard && npm install",
   "outputDirectory": "dashboard/dist",
   "framework": "vite",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
 }

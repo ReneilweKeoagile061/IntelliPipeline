@@ -1,5 +1,18 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 
+async function parseJsonResponse(response, label) {
+  if (!response.ok) {
+    throw new Error(`${label} failed: ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    throw new Error(`${label} returned non-JSON response`);
+  }
+
+  return response.json();
+}
+
 export const queryIntelligence = async (question, conversationHistory = []) => {
   const response = await fetch(`${API_BASE}/query`, {
     method: "POST",
@@ -7,8 +20,7 @@ export const queryIntelligence = async (question, conversationHistory = []) => {
     body: JSON.stringify({ question, conversation_history: conversationHistory }),
   });
 
-  if (!response.ok) throw new Error(`Query failed: ${response.status}`);
-  return response.json();
+  return parseJsonResponse(response, "Query");
 };
 
 export const getXAIExplanation = async (transactionId, audienceType = "executive") => {
@@ -17,12 +29,11 @@ export const getXAIExplanation = async (transactionId, audienceType = "executive
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ audience: audienceType }),
   });
-  if (!response.ok) throw new Error(`Explain failed: ${response.status}`);
-  return response.json();
+
+  return parseJsonResponse(response, "Explain");
 };
 
 export const getGreenMetrics = async (timeRange = "7d") => {
   const response = await fetch(`${API_BASE}/green-metrics?range=${timeRange}`);
-  if (!response.ok) throw new Error(`Green metrics failed: ${response.status}`);
-  return response.json();
+  return parseJsonResponse(response, "Green metrics");
 };

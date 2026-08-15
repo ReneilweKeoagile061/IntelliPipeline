@@ -7,6 +7,15 @@ const client = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+client.interceptors.response.use((response) => {
+  const isHtml =
+    typeof response.data === "string" && response.data.trim().startsWith("<!DOCTYPE");
+  if (isHtml || response.data === null || response.data === undefined) {
+    return Promise.reject(new Error("Invalid API response"));
+  }
+  return response;
+});
+
 // ============================================================================
 // EXISTING ENDPOINTS
 // ============================================================================
@@ -30,14 +39,14 @@ export const getKPIMetrics = () => client.get("/analytics/kpi");
  * @param {number} limit - Number of transactions to return (default: 20)
  * @returns {Promise} - Array of recent transactions with predictions
  */
-export const getLiveTransactions = (limit = 20) => 
+export const getLiveTransactions = (limit = 20) =>
   client.get(`/analytics/transactions/live?limit=${limit}`);
 
 /**
  * Get customer segmentation heatmap data (FPR/FNR by segment and region)
  * @returns {Promise} - Segmentation matrix with insights
  */
-export const getCustomerSegmentation = () => 
+export const getCustomerSegmentation = () =>
   client.get("/analytics/segmentation");
 
 /**
@@ -45,12 +54,12 @@ export const getCustomerSegmentation = () =>
  * @param {number} hours - Number of hours to return data for (default: 24)
  * @returns {Promise} - Hourly volume and latency data
  */
-export const getTransactionVolume = (hours = 24) => 
+export const getTransactionVolume = (hours = 24) =>
   client.get(`/analytics/volume?hours=${hours}`);
 
 /**
  * Get confusion matrix data for model performance visualization
  * @returns {Promise} - Confusion matrix with derived metrics and cost analysis
  */
-export const getConfusionMatrix = () => 
+export const getConfusionMatrix = () =>
   client.get("/analytics/confusion-matrix");

@@ -1,39 +1,39 @@
 {
   "feature_importance": {
-    "transaction_amount": 0.0343540330268366,
-    "tx_count_7d": 0.33607007581417486,
-    "avg_amount_30d": 0.0312957027701485,
-    "amount_deviation_ratio": 0.03307058589631904,
-    "hour_of_day": 0.02792900984805123,
-    "is_weekend": 0.00451796228995047,
-    "is_new_merchant": 0.0007330514617195465,
-    "is_cross_border": 0.003032909731650342,
-    "rule_based_risk": 0.03440633915567868
+    "transaction_amount": 0.028323222770506744,
+    "tx_count_7d": 0.3709585902260548,
+    "avg_amount_30d": 0.022757577415084534,
+    "amount_deviation_ratio": 0.026050401336099042,
+    "hour_of_day": 0.02055358128720232,
+    "is_weekend": 0.004125938476773669,
+    "is_new_merchant": 0.00039716854809281185,
+    "is_cross_border": 0.002399951829416286,
+    "rule_based_risk": 0.02478557214531088
   },
   "top_features": [
     [
       "tx_count_7d",
-      0.33607007581417486
-    ],
-    [
-      "rule_based_risk",
-      0.03440633915567868
+      0.3709585902260548
     ],
     [
       "transaction_amount",
-      0.0343540330268366
+      0.028323222770506744
     ],
     [
       "amount_deviation_ratio",
-      0.03307058589631904
+      0.026050401336099042
+    ],
+    [
+      "rule_based_risk",
+      0.02478557214531088
     ],
     [
       "avg_amount_30d",
-      0.0312957027701485
+      0.022757577415084534
     ]
   ],
-  "explanation_stability": 0.9739733968197835,
+  "explanation_stability": 0.9759231922064686,
   "interpretable_for_pct": 0.948,
   "methodology": "SHAP TreeExplainer",
-  "run_id": "098fa2a4eba94521b8a671fdfb3dd5dc"
+  "run_id": "f1f62742ae904949b7d5d0b294c0f1cb"
 }

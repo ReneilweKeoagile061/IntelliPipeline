@@ -5,6 +5,37 @@ import {
 } from "recharts";
 import { getKPIMetrics } from "../services/api";
 
+const DEMO_KPI = {
+  fraud_prevented_this_month: 6_170_000,
+  fpr_reduction_percentage: 92.3,
+  estimated_annual_roi: 6_640_000,
+  monthly_savings: 554_000,
+  baseline_fpr: 12.0,
+  current_fpr: 0.93,
+  monthly_trend: [
+    { month: "May", fraud_prevented: 5_430_000, savings: 452_000 },
+    { month: "Jun", fraud_prevented: 5_900_000, savings: 491_000 },
+    { month: "Jul", fraud_prevented: 5_100_000, savings: 425_000 },
+    { month: "Aug", fraud_prevented: 6_300_000, savings: 525_000 },
+    { month: "Sep", fraud_prevented: 6_200_000, savings: 516_000 },
+    { month: "Oct", fraud_prevented: 5_800_000, savings: 483_000 },
+    { month: "Nov", fraud_prevented: 5_900_000, savings: 491_000 },
+    { month: "Dec", fraud_prevented: 5_700_000, savings: 475_000 },
+    { month: "Jan", fraud_prevented: 5_400_000, savings: 450_000 },
+    { month: "Feb", fraud_prevented: 6_000_000, savings: 500_000 },
+    { month: "Mar", fraud_prevented: 6_500_000, savings: 541_000 },
+    { month: "Apr", fraud_prevented: 6_170_000, savings: 554_000 },
+  ],
+};
+
+function isKpiPayload(data) {
+  return (
+    data &&
+    typeof data.fpr_reduction_percentage === "number" &&
+    Array.isArray(data.monthly_trend)
+  );
+}
+
 const fmt = (v) => {
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
   if (v >= 1_000)     return `$${(v / 1_000).toFixed(0)}K`;
@@ -34,29 +65,8 @@ export default function KPIMetrics() {
 
   useEffect(() => {
     getKPIMetrics()
-      .then((res) => setKpi(res.data))
-      .catch(() => setKpi({
-        fraud_prevented_this_month: 6_170_000,
-        fpr_reduction_percentage:   92.3,
-        estimated_annual_roi:       6_640_000,
-        monthly_savings:              554_000,
-        baseline_fpr: 12.0,
-        current_fpr:   0.93,
-        monthly_trend: [
-          { month: "May", fraud_prevented: 5_430_000, savings: 452_000 },
-          { month: "Jun", fraud_prevented: 5_900_000, savings: 491_000 },
-          { month: "Jul", fraud_prevented: 5_100_000, savings: 425_000 },
-          { month: "Aug", fraud_prevented: 6_300_000, savings: 525_000 },
-          { month: "Sep", fraud_prevented: 6_200_000, savings: 516_000 },
-          { month: "Oct", fraud_prevented: 5_800_000, savings: 483_000 },
-          { month: "Nov", fraud_prevented: 5_900_000, savings: 491_000 },
-          { month: "Dec", fraud_prevented: 5_700_000, savings: 475_000 },
-          { month: "Jan", fraud_prevented: 5_400_000, savings: 450_000 },
-          { month: "Feb", fraud_prevented: 6_000_000, savings: 500_000 },
-          { month: "Mar", fraud_prevented: 6_500_000, savings: 541_000 },
-          { month: "Apr", fraud_prevented: 6_170_000, savings: 554_000 },
-        ],
-      }))
+      .then((res) => setKpi(isKpiPayload(res.data) ? res.data : DEMO_KPI))
+      .catch(() => setKpi(DEMO_KPI))
       .finally(() => setLoading(false));
   }, []);
 
